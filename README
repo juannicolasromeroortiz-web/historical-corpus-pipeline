@@ -1,305 +1,108 @@
-1. Contexto histórico y objetivo de investigación
-El proyecto se centra en la prensa colombiana de mediados del siglo XIX (1847–1871) con el objetivo de identificar y analizar al estudiante como sujeto político emergente. La meta no es automatizar la interpretación histórica, sino generar un corpus textual confiable y consultable, que permita búsquedas asistidas, comparación de noticias y análisis de representaciones sociales acordes a las metodologías de la historia concpetual y la historia intelectual. En este marco, má que la exactitud del OCR (que puede ser algo que se puede pulir con postrerioridad) prima la organización de los documentos y las potencialidades de indexación para la validez histórica del trabajo. En este caso, estoy tratando con un corpus documental masivo (de entre 7000 a 10000 PDFS)
+Pipeline de Procesamiento de Prensa Histórica (Siglo XIX)
+Proyecto: El estudiante como sujeto político en la prensa colombiana (1847–1871)
 
-2. Arquitectura general del pipeline
-El diseño del pipeline sigue una estrategia modular, en un inicio enfocado al desarrollo de OCR a través de OCR4all (aspecto que se descarto por su imposibilidad de generar procesos masivos de OCR), con capas claramente separadas y trazabilidad completa:
+Este repositorio contiene el flujo de trabajo técnico para la transformación de prensa histórica colombiana en un corpus textual indexado. El sistema está diseñado para manejar un volumen masivo (7,000–10,000 PDFs) priorizando la trazabilidad documental y la relevancia histórica.
+1. Arquitectura General del Pipeline
 
-Descarga y filtrado del corpus
+El diseño sigue una estrategia modular con capas separadas para garantizar que el procesamiento de datos sea escalable y recuperable:
 
-Se construyó un sistema automatizado para descargar periódicos históricos desde repositorios digitales (depositorio de la hemeroteca historica del Banrep).
+    Descarga y Normalización: Captura automatizada desde la Hemeroteca del Banrep. Se implementó una normalización de nombres de archivo compatible con sistemas Linux (evitando caracteres especiales) y un registro riguroso de metadatos (fecha, volumen, periodicidad) como eje central del proyecto.
 
-Se implementó normalización de nombres de archivos para que fueran compatibles con OCR y indexación, evitando caracteres problemáticos como comas.
+    Rasterización OCR-aware: Conversión a PNG/TIFF de alta resolución para preservar la tipografía serif del siglo XIX. Ejecutado en batches nocturnos mediante tmux en Ubuntu.
 
-Se mantiene un registro de metadatos, incluyendo fuente, fecha, volumen y periodicidad.En este caso, los metadatos son el alma del proceso de descarga. Si es necesario, te puedo compartir los archivos en python de esta sección, aunque la descarga ya funciona perfectamente (mostrandome errores, realizadno loggeos para posibilidad de descarga manual, etc). Si te pido algo de esta parte del pipeline te lo especificaré en el futuro.
+    OCR de Producción: Uso de OCRmyPDF (baseline v5.8.3) para generar capas de texto incrustado, optimizado para la recuperación de keywords mediante un control de calidad automático que detecta fragmentación excesiva.
 
-Rasterización OCR-aware (batch nocturno)
+2. Sistema de Indexación y Relevancia (Estado Actual)
 
-Para preservar tipografía histórica y serif de los periódicos, se desarrolló un rasterizador independiente que convierte PDFs en imágenes PNG/TIFF de alta calidad.
+Actualmente, el proyecto ha superado la etapa de procesamiento bruto y se encuentra generando reportes de salida en formato Excel y bases de datos SQLite (FTS5). Estos archivos consolidan la información filtrada cruzando el contenido extraído con la metadata original.
+El "Score" de Confiabilidad y Relevancia
 
-Este proceso es batch y escalable, pensado para ejecutarse de noche usando tmux en Ubuntu, asegurando que la rasterización no degrade los detalles tipográficos críticos. En este caso, se tiene como herramiento congelada, pensada para implementarse en caso de que ciertos procesos se requieran en el futuro (Realizar de nuevo el OCR de archivos especificos usando OCR4all, por ejemplo)
+Para identificar los documentos que realmente aportan valor al análisis historiográfico y descartar el ruido del OCR, implementamos un sistema de puntuación heurística. Este puntaje decide qué documentos requieren intervención manual y cuáles son aptos para el análisis directo.
 
-Se generó un sistema de prueba para validar la calidad de las imágenes antes de pasar al OCR.
+La fórmula de confidence_score se define como:
+confidence_score=(w1​⋅Lnorm​)+(w2​⋅Hnorm​)+(w3​⋅(1−Noise))
 
-OCR y procesamiento textual
+Donde:
 
-Se implementó un pipeline con OCRmyPDF para procesar los archivos PDFs con texto incrustado.
+    Lnorm​: Longitud del texto normalizada (evita penalizar textos cortos pero útiles).
 
-Antes de decantarme por OCRmyPdf 8por su capacidad para hacer batchs nocturnos y manejar información masiva) se desarrollo y mantuvo un perfil de OCR baseline (v5.8.3), estable y validado. También se generaron métricas de comparación (grupos A/B/C) para evaluar cualquier ajuste futuro sin comprometer la estabilidad.
+    Hnorm​: Intensidad de hits (frecuencia de la palabra "estudiante").
 
-El OCR incluye un control de calidad automático (auto-QC) que detecta errores mecánicos y fragmentación de texto, optimizando la recuperación de palabras clave históricas.
+    Noise: Ratio de caracteres no alfabéticos (indicador de error de OCR).
 
-Indexación y corpus final (punto actual de mi proyecto)
+Niveles de Intervención:
 
-Una vez generado el texto OCR, se consolidan archivos normalizados y unificados, listos para indexación.
+    HIGH (≥ 0.66): Documento listo para análisis.
 
-El sistema de indexación, en el que implemento SQLite (tengo un archivo documents.db de tipo index-only FTS5) permite búsquedas por términos clave, metadatos y fechas, facilitando la localización de menciones de un conjunto de claves de búsqueda de las que solo he utilizado "estudiante".
+    MEDIUM (0.40 – 0.65): Requiere revisión asistida.
 
-Se realizaron pruebas de consistencia y recuperación de keywords, validando la utilidad del corpus para investigación histórica.
+    LOW (< 0.40): Candidato a re-procesamiento (OCR4all).
 
-3. Estado actual del proyecto
+3. Generación del Subcorpus de 30 Archivos
 
-Descarga y filtrado: completados, con metadatos consolidados.
+La actualización más reciente del pipeline permite la creación automática de un subcorpus de los 30 archivos más representativos. Este proceso no se basa solo en la cantidad de menciones, sino en una jerarquía de Roles Discursivos:
 
-Rasterización: pipeline OCR-aware listo, ejecutable en batch nocturno.
+    Clasificación Lexical:
 
-OCR: pruebas iniciales con OCRmyPDF estables; control de calidad implementado.
+        CENTRAL: Hits ≥ 5 (El tema central es el estudiante).
 
-Indexación: En este punto me encuentro. El objetivo final es que a partir de la informaciónde la base de datos se pueda alimentar una tabla en excel con los siguientes elementos:"Título de la publicacion seriada.
-Ciudad de publicación : y editor 
-"	Año	Vol.	Núm.	Mes	Asigne la página inicial del articulo y la página final 		"
-AUTOR PRICIPAL 
+        SECONDARY: Hits 2–4 (Mención relevante).
 
-Registre el primero autor responsable del artículo,
-Asigne primero los apellidos, seguido de los nombres y si se conoce las fechas de nacimiento y muerte
-"	"TÍTULO 
+        MENTION: Hits 1 (Referencia contextual).
 
+    Selección del Top 30:
+    El script filtra la base de datos documents.db buscando la intersección perfecta: Alta Confiabilidad + Rol Central. El resultado es un archivo Excel que organiza estos 30 documentos por año de publicación, incluyendo:
 
-Transcriba el título : subtítulo y Menciones de responsabilidad del artículo con toda exactitud en cuanto a redacción, orden y ortografía, pero no necesariamente en cuanto a puntuación y uso de mayúsculas. "	"RESUMEN 
+        Título de la publicación y editor.
 
+        Metadata completa (Año, Vol, Núm, Mes).
 
-**Realice una pequeña descripción clara y precisa acerca de lo que trata el artículo  "	"CITAS CLAVE
+        Métricas de intensidad: hits_exact y density.
 
+        Ruta de Intervención: Marcados como REPROCESS_PRIORITY si la relevancia es alta pero el score técnico es bajo.
 
-**Trascriba citas que considere clave para la comprensión del artículo  "	"PALABRAS CLAVE I
+4. Análisis de Episodios Discursivos
 
-**Registre todas las principales temáticas 
-de que trata el artículo 
+El pipeline integra un módulo de Análisis Conceptual basado en la perspectiva de Reinhart Koselleck. Utilizando spaCy, extraemos constelaciones semánticas (sustantivos y adjetivos) en ventanas de ±20 palabras alrededor de la keyword.
 
-"	"PALABRAS CLAVE II
+    Identificación de Núcleos: El sistema detecta qué palabras coaparecen con "estudiante" de forma persistente a través de los años.
 
-**Registre todas las principales temáticas 
-de que trata el artículo 
+    Salida Técnica: Se generan los archivos episodios_discursivos.csv y conceptual_cluster.csv, los cuales funcionan como el andamiaje empírico para la interpretación histórica final.
+=====================================================================================================    
+Motor de Relevancia y SQLite FTS5
+1. Ingesta de Datos y Nueva Estructura (ingest_to_sqlite.py)
 
-"	"PALABRAS CLAVE III
+Para aislar los datos de esta etapa analítica sin comprometer el índice general de todo el volumen documental, implementamos el script ingest_to_sqlite.py.
 
-**Registre todas las principales temáticas 
-de que trata el artículo 
+    Archivo generado: documentsfase2.db.
 
-"	"DESCRIPCIÓN DE LA PUBLICACIÓN
+    Función: Este script toma los resultados filtrados previamente y construye una base de datos específica para la etapa de lectura fina y extracción de metadatos historiográficos. Esto permite realizar consultas analíticas mucho más rápidas sobre el subcorpus ya curado sin tener que procesar los 10,000 PDFs originales.
 
-**Registre la información correspondiante a la descripción de la publicación que aparece en la hemeroteca digital
+2. Refactorización con generar_corpus.py
 
-"
-En este caso, el proceso de indexación se penso con estas fases:
-Fase 1 ✔ búsqueda comparativa ✔ constelaciones semánticas ✔ clustering conceptual ligero ✔ primeros hits ✔ subcorpus preliminar ✔ mapping lexical ✔ timeline temática ✔ detección de “episodios discursivos” Luego en Fase 2: → OCR4all sobre hits → lectura fina histórica → extracción y anotación.
-Y apartir de esto se alimentaría la tabla de excel.
+Dejamos atrás el conteo iterativo con Python puro para adoptar Pandas, lo que vectoriza y optimiza el manejo de los datos tabulares.
 
-Ahora, para la fase 1 llevo los siguientes pasos:
-3.2Proceso de indexación: A partir de una lista de KEYWORDS, el proceso genera (en la carpeta /home/juan_romero/projects/ocr_project/exports/):
-3.2.1. SQLite para obetener lista de documentos donde aparece la keyword. Se señala y especifica, como columnas del archivo keywords_hits_exact.csv el año de publicación del periódico, su nombre y el número específico donde aparece.
-3.2.2. Para cada documento .txt listado en el paso anterior: Se abre el .txt OCR al que apunta y se cuentan las ocurrencias exactas (uso de python limpio). En este proceso se genera, dentro de keywords_hits_exact.csv, las siguientes métricas:
-	3.2.2.1. Hits_exact: intensidad discursiva absoluta del término de búsqueda. Cuenta la cantidad de veces que aparece el concepto clave dentro del documento generado luego del OCR. Para realizar este proceso, el pipeline se vale depython para realizar el conteo exacto de palabra por documento. En este caso, esta métrica podría indicarnos la marginalidad o la centralidad temática de un concepto.
-	3.2.2.2. text_length: Se mide la cantidad total de texto reconocido. Si los textos son muy cortos, puede tratarse a un proceso de OCR fallido, páginas incompletas o aparición de múltiples imágenes en el archivo OCR. Por otro lado, un número razonable implcaría texto real utilizable.
-	3.2.2.3. density: mide la densidad normalizada del texto. density= hits_exact/text_length. Mide la relevancia relativa y busca evitar que textos larguísimos dominen solo por tamaño.
-3.2.3. Se genera un archivo .csv donde se especifica la aparición más temprana de la clave de búsqueda dentro del cumulo de periodicos indexados. El archivo se llama keyword_first_hits.csv
-3.2.4. A partir de la intensidad discursiva absoluta del término de búsqueda (valor de hits_exact), se genera un subcorpus en donde se agrupan las 20 unidades documentales donde hits_exact > 1. Es decir, se genera el subcorpus con los documentos donde más aparezca el término de búsqueda. Esto se genera en un archivo llamado keyword_subcorpus_top.csv.	 
-3.2.5. Indicadores de confiabilidad: Buscan saber qué tan confiable es usar el documento al que apunta la búsqueda para análisis histórico. la confibailidad se mide como un elemento gradual y contextual, basado en indicadores y métricas específicas. Estas son:
-	3.2.5.1. Se retoma del proceso de contado: hits_exact, text_length y density.
-	3.2.5.2. noise_ratio (Indicador de ruido OCR): Calcula la proporción de caracteres "raros" que suelen indicar un proceso malo de OCR. noise_ratio=caracteres_no_alfabéticos /longitud total.
-Se genera un indicador compuesto de confiabilidad: se establece como una heurística explíctia:
-confidence_score = (
-    w1 * normalized_length +
-    w2 * normalized_hits +
-    w3 * (1 - noise_ratio)
-)
-Este no se establece como criterio de exclsuión: es un indicador de tratamiento que busca especifica qué tipo de intervención necesita el documento analizado (candidatos a reprocesamiento OCR y lectura asistida). Genera unas flags de salida (ocr_attention_flag) que indican el mejor camino que tomarpara el proceso de intevención: 
-confidence ≥ 0.66  → HIGH
-0.40 – 0.65        → MEDIUM
-< 0.40             → LOW
+    Procesamiento: generar_corpus.py se conecta a documentsfase2.db, extrae la información a un DataFrame y permite aplicar operaciones estadísticas sobre todo el set de datos de manera simultánea.
 
-3.2.6. Agregar complementos compatibles a confidence_score, los cuales buscan generar el proceso de refinado de la busqueda a partir de evidencia lexica > score técnico:
-3.2.6.1.lexical_role: separa la aparición de centralidad discursiva para refinar la lectura, no la borra. Así:
-hits_exact == 1              → "MENTION"
-hits_exact 2–4               → "SECONDARY"
-hits_exact ≥ 5               → "CENTRAL"
-Con ello, se pueden seguir las siguientes rutas de intervención según los resultados:
-LOW + CENTRAL → candidato fuerte a re-OCR
-LOW + MENTION → referencia contextual (no núcleo).
-3.2.6.1.ocr_action. define las rutas de intervención. Sigue la siguiente lógica: 
-| Condición      | ocr_action             |
-| -------------- | ---------------------- |
-| hits_exact ≥ 2 | **REPROCESS_PRIORITY** |
-| hits_exact = 1 | KEEP_AS_CONTEXT        |
-| hits_exact = 0 | OK                     |
-3.2.6. timeline_temática: ESpecifica, por cada palabra de keyword: cuándo aparece, con qué intensidad, con qué rol discursivo, cómo cambia eso en el tiempo. A partir de las siguientes métricas, calculadas cada año. COn esto, se busca responder empíricamente cuándo emerge el término, cuándo se estabiliza, cúando empieza a estructurar discurso y en qué momentos el OCr limíta la lectura. Produce keyword_timeline.csv:
+    Keyword central: Todo el cálculo de esta sesión se ejecutó parametrizado para la clave de búsqueda principal del proyecto: "estudiante".
 
-docs_with_term: número de documentos donde aparece
-total_hits: apariciones totales del término
-avg_hits_per_doc
-central_docs: documentos con lexical_role = CENTRAL
-secondary_docs
-mention_docs
-reprocess_priority_docs
+3. Nuevo Cálculo de Relevancia: Ocurrencias y Dispersión
 
-En keyword_timeline.csv aparece: 
-3.2.6.1. aparición inicial, medida por el primer año donde docs_with_term > 0, es decir, el ingreso del término al espacio público impreso.
-3.2.6.2. intensificación: donde se especifica el aumento sostenido de: docs_with_term, total_hits, avg_hits_per_doc, no como una mención aislada. 
-3.2.6.3. Cambio cualitativa: en la aparición de: secondary_docs. luego central_docs
-3.2.6.4. Señal de ocrpus critico: reprocess_priority_docs es alto en ciertos años.
-3.2.7. Detección de episodios discursivos: Definidiso como Momentos históricos en los que una o varias constelaciones aparecen de forma recurrente, configurando un tipo de discurso. Para cada documento con hits_exact ≥ 1:
-3.2.7.1.Tomar una ventana léxica alrededor de estudiante (por ejemplo ±20 palabras)
-3.2.7.2. Extraer:
-*Sustantivos
-*Adjetivos
-*verbos cercanos
-3.2.7.3.Contar coocurrencias por:
-*Año
-*Tramo temporal (ej. 1854–56, 1857–61, etc.)
-3.2.7.4.Identificar núcleos léxicos recurrentes
-Así, se busca extraer constelaciones semánticas (es decir, conjuntos de palabras que tienden a aparecer junstas alrededor de un termino, sin interpretrar qué significan) y resumirlas luego por tramo temporal. Para ello, por cada año: se localiza la palabra clave en los textos, se extrae una ventana léxica, se cuentan las palabras que aparecen cerca y se produce un CSV interpretable en excel para así, luego, decidir cómo se agrupa esto por tramos temporales. La extracción léxica esta basada en el criterio conceptual dado desde la perspectiva que construye Reinhart Koselleck de concepto en futuro Pasado. Esto se puede realizar generando candidatos a conceptos a partir de un proceso sistemático y replicable que busca distinguir palabras con potencial conceptual de palabras que no lo tienen usando recuros existentes. Esto se realiza a través de spaCy.
-Este programa permite filtrar por categoría gramatical, trabajar con lemas, usar stopwords linguisticas estandar y reducir el ruido sin decidir a mano qué puede llegar a ser o no un concepto. Genera una estructura lingüistica del texto. 
-Proceso: Para cada documento donde aparece la keyword (ej. estudiante):
--Carga el ocr.txt
--Busca ventanas léxicas alrededor de la keyword
--Pasa esas ventanas por spaCy
+La actualización más crítica fue la evolución de la métrica de selección. Ya no dependemos únicamente del volumen absoluto (hits_exact), sino que introdujimos la dispersión para evaluar la distribución del término a lo largo del texto y garantizar que el documento aborda al actor político de forma sostenida.
 
-De cada ventana extrae solo:
-sustantivos (NOUN)
-adjetivos (ADJ)
-Convierte cada token a su lema
-Elimina:
--stopwords de spaCy
--tokens muy cortos
--la keyword misma
-Cuenta frecuencias por año
-Exporta constelaciones semánticas depuradas
-Genera como resultado:
-Palabras con potencial conceptual, no conectores, no verbos, no ruido trivial. un arhcivo .csv (constelaciones_spacy_por_ano.csv). no decide qué es un concepto koselleckiano pero garantiza que lo que aparece ya no es ruido linguistico.
-Lo que se busca generar es: un espacio semántico depurado lingüísticamente,
-pero aún no conceptualmente interpretado.
-3.2.7.5. A partir del scripts episodios_discursivos.py, se especifican los tramos temporales donde un conjunto de conceptos aparece de forma recurrente, interrelacionada y estable, organizando el discurso alrededor de un problema histórico. De esta manera, el script lo que hace es, por cada concepto, contar en cuantos años aparece y con cuántos otros conceptos coaparece. De esta manera, se clasifican los conceptos por rol discursivo y no por su significado. Con este proceso se busca afirmar lo siguiente: "En un tramo temporal específico, ciertos términos tienden a aparecer juntos de forma no aleatoria". (Hecho dependiente de las características mismas del corpus, no una interpretación histórica). Se opera en el nivel de ocurrencia estructurada.
-Los roles discursivos que se establecen son los siguientes:
-a. Núcleo: palabras que aparecen en varios años y coaparecen con muchos otros conceptos. Estructura el discurso alrededor de la palabra clave.
-b. Soporte: aparece en algunos años y conecta con el núcleo. Sostiene el episodio discursivo.
-c. Contexto: aparece de forma puntual y no genera red. Conforma el entorno narrativo.
-El archivo de salida se llama episodios_discursivos.csv, en donde se distingue la siguiente información:
-| columna                | qué mide realmente                         |
-| ---------------------- | ------------------------------------------ |
-| `concept`              | candidato léxico lematizado                |
-| `years_present`        | **persistencia temporal**                  |
-| `cooccurring_concepts` | **densidad relacional**                    |
-| `discursive_role`      | rol estructural (CORE / SUPPORT / CONTEXT) |
-| 'year'                 | años en donde los conceptos aparecen       |
-3.2.8. Clustering conceptual ligero:En este punto no se busca desarrollar procesos de automatización asistida en el que se realice, por ejemplo: semántica profunda, embeddings (representaciones numéricas (vectores) de datos complejos como palabras, frases, imágenes o sonidos, que capturan su significado y relaciones semánticas, permitiendo a la IA entenderlos matemáticamente), procesado de topi modeling o interpretación histórica automática. Se trata de un proceso ligero, estructural y controlable que funcione como andamiaje empírico que permite una posterior lectura histórica. De esta manera, se busca generar "constelaciones semánticas", entendidas como un conjunto reducido de conceptos que:
-a. Coocuren con el keyword
-b. Aparecen de forma recurrente
-c. Se organizan jerárquicamente a tráves de los roles estructurales.
-d. Están acotados temporalmente.
-Basandose en la información presente en episodios_discursivos.csv, se realiza el proceso de clusterización a partir de tres dimensiones o reglas de juego:
-3.2.8.1. Temporal: Se agrupa por ventana movil de años o por tramos ya detectados en timeline_temática.py
+    Ocurrencias (Hits): El recuento total de la keyword en el documento.
 
-3.2.8.2. Rol discursivo: reconociendo que no todos los conceptos pesan igual, se establece la regla básica basada en los roles estructurales definidos en 3.2.7.
-3.2.8.3. Coocurrencia estructural: Aquí se usa cuántas veces un concepto aparece junto a otros, no solo con estudiante sino entre sí. Así, se busca detectar núcleos densos y satélites conceptuales.
-Las métricas que se utilizan son las siguientes:
--frecuencia acumulada.
--número de coocurrencias.
--persistencia temporal.
--densidad relativa.
+    Dispersión: Mide si la palabra "estudiante" aparece concentrada en un solo párrafo (lo que podría indicar un aviso clasificado, una lista de suscriptores o ruido del OCR) o si está distribuida a lo largo de varias páginas/secciones del periódico.
 
-Para cada ventana:
-a.Se filtran conceptos cuyos years_list intersectan la ventana
-b.Se agrupan por discursive_role
+    Métrica de Relevancia: El cálculo evalúa el peso de ambas variables. Matemáticamente, la relevancia (R) de un documento se optimiza combinando la frecuencia normalizada de la palabra clave (fkw​) y su índice de dispersión espacial dentro del texto reconocido (D):
+    R=α⋅fkw​+β⋅D
 
-Para así calcular:
-a.frecuencia implícita (years_present)
-b.densidad relacional (cooccurring_concepts)
+    (Donde α y β representan los pesos asignados a la frecuencia y la dispersión temporal/espacial, priorizando documentos con un discurso estructurado).
 
-Y así clasificar conceptos dentro de la constelación:
-CORE: centrales y persistentes
-SUPPORT: articuladores
-CONTEXT: entorno discursivo
+4. Impacto en el Análisis Histórico
 
+Esta lógica permite que el Excel final exporte un Top 30 mucho más preciso. Un documento de 40 páginas con 5 menciones distribuidas equitativamente a lo largo de sus columnas ahora tendrá un puntaje de relevancia mucho mayor que un documento donde las 5 menciones ocurren en la misma línea, reduciendo drásticamente los falsos positivos antes de pasar a la lectura humana asistida.
 
-Este paso genera dos archivos: 
-1.conceptual_cluster.csv. con los siguientes datos:
-| cluster_id | time_window | core_concepts | support_concepts | size |
-| ---------- | ----------- | ------------- | ---------------- | ---- |
-2.clusters_summary.txt 
-
-(ME ENCUENTRO EN ESTE PUNTO).
-En general, este proceso de indexación deberá seguir estos procesos:
-extract_for_excel.py]
-        ↓
-[timeline_tematica.py]
-        ↓
-[detección episodios discursivos]Constelaciones semánticas
-        ↓
-[clustering conceptual ligero]voy acá
-        ↓
-[selección de documentos + snippets]
-
-
-Y recién ahí pasas a FASE 3.
-Luego: D. Preparación directa para Excel con campos historiográficos
-→ títulos, resúmenes, citas clave
-
-
-4. Conclusión contextual
-Hasta la fecha, el proyecto ha construido un pipeline robusto y reproducible que transforma periódicos históricos en un corpus textual confiable, preservando la integridad de la tipografía original y garantizando la trazabilidad de cada documento. Esto proporciona una base técnica sólida para estudios históricos sobre la figura del estudiante en la prensa del siglo XIX colombiano, sin comprometer la precisión ni la fiabilidad de los datos para análisis posteriores. Si es necesario que te comparta archivos, arquitectura del proyecto, comentalo. De igual forma si tienes criticas constructivas, adelante.
-
-
-
-
-┌─────────────────────┐
-│  Descarga de PDFs   │
-│  desde repositorios │
-│  (metadatos + URLs) │
-└─────────┬───────────┘
-          │
-          ▼
-┌─────────────────────┐
-│  Filtrado y         │
-│  normalización de   │
-│  nombres de archivos│
-│  (OCR-safe)         │
-└─────────┬───────────┘
-          │
-          ▼
-┌────────────────────────────┐
-│  Rasterización OCR-aware    │
-│  • Conversión a PNG/TIFF    │
-│  • Preservación tipográfica │
-│  • Batch nocturno con tmux  │
-│  • Control preliminar de QC │
-└─────────┬──────────────────┘
-          │
-          ▼
-┌────────────────────────────┐
-│       OCR con OCRmyPDF      │
-│  • Texto incrustado en PDF  │
-│  • Baseline v5.8.3          │
-│  • Métricas de evaluación   │
-│  • Auto-QC: fragmentación   │
-│    y keywords               │
-└─────────┬──────────────────┘
-          │
-          ▼
-┌────────────────────────────┐
-│  Normalización y consolid. │
-│  • Archivos textuales       │
-│  • Eliminación de duplicados│
-│  • Preparación para index.  │
-└─────────┬──────────────────┘
-          │
-          ▼
-┌────────────────────────────┐
-│      Indexación final       │
-│  • Búsqueda por keywords    │
-│  • Consulta por metadatos   │
-│  • Recuperación de menciones│
-│    de estudiantes/política  │
-└────────────────────────────┘
-
-Notas técnicas y de contexto:
-
-    Cada bloque es modular y reproducible, siguiendo la filosofía OCR4all/OCR-D.
-
-    La rasterización está diseñada para preservar detalles históricos críticos, evitando degradación tipográfica que afecte el OCR.
-
-    El control de calidad (auto-QC) permite detectar problemas de fragmentación o pérdida de keywords antes de indexar.
-
-    Todo el pipeline está pensado para ejecución masiva y escalable, con batches nocturnos para rasterización y OCR.
-
-    La indexación final habilita búsquedas históricas específicas, facilitando análisis sobre la aparición del estudiante como sujeto político en la prensa del siglo XIX
+    Nota técnica: Todo el proceso de exportación a Excel está diseñado para ser compatible con campos historiográficos tradicionales (resúmenes, citas clave y descripción de la publicación), facilitando la transición del dato digital al análisis humanístico.
     
     

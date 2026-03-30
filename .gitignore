@@ -1,0 +1,15 @@
+# Entorno virtual
+venv/
+__pycache__/
+
+# Datos masivos (No subir a GitHub)
+data_final/
+db/*.db
+
+# Archivos exportados (Opcional, pero recomendado ignorar)
+exports/
+exports_recovered/
+subcorpus_recovered_refs/
+recovery_pipeline/
+subcorpus_fase3_refs/
+

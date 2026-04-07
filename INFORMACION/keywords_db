@@ -1,0 +1,884 @@
+KEYWORDS = [
+    "estudiante",
+    "estudiantil",
+    "joven",
+    "juventud",
+    "colejio",
+    "colegio",
+    "universidad"
+]
+
+5. Plan realista hasta el 20 de enero
+Día 1–2
+Extender search.py:
+múltiples keywords
+export CSV
+Queries canónicas (timeline, primeros hits)
+
+Día 3
+Script de extracción a Excel
+10–15 keywords estratégicas
+2–3 clusters
+
+Día 4
+Redacción metodológica:
+qué automatiza
+qué no
+por qué es legítimo
+
+4️⃣ Cómo encaja todo (pipeline claro)
+
+Así queda la FASE 2 completa:
+
+[extract_for_excel.py]
+        ↓
+[timeline_tematica.py]
+        ↓
+[detección episodios discursivos]Constelaciones semánticas ← siguiente
+        ↓
+[clustering conceptual ligero]
+        ↓
+[selección de documentos + snippets]
+
+
+Y recién ahí pasas a FASE 3.
+Luego: D. Preparación directa para Excel con campos historiográficos
+→ títulos, resúmenes, citas clave
+
+
+
+
+
+
+
+
+
+NECESITA SER COMPLEMENTADO LO SIGUIENTE.
+Palabras y definiciones a tomar en cuenta para el proyecto de descarga-OCR-indexación: Uso de herramientas digitales para FACILITAR, ORGANIZAR y ORIENTAR el proceso de búsqueda histórica a partir de un corpus documental másivo (de más de 7000 archivos PDF). Proceso:
+1. Arquitectura de descarga automática [COMPLEMENTAR]
+1.2. Arquitectura de carpetas resultado:
+data_final/
+├── Periodico_A/
+│   ├── Numero_001/
+│   │   └── input/
+│   │       ├── archivo.pdf
+│   │       
+│   ├── Numero_002/
+│   │   └── input/
+│   │       └── archivo.pdf
+│   └── ...
+├── Periodico_B/
+│   └── ...
+1.3. información final de descarga:
+| Nivel                               | Total identificado | Descargados OK | Con error técnico | Excluidos (criterio) |
+| ----------------------------------- | -----------------: | -------------: | ----------------: | -------------------: |
+| Números / ediciones (total)         |           **2919** |           2087 |               381 |                  451 |
+| └─ Fuera de rango temporal          |                430 |              — |                 — |                  430 |
+| └─ Sin año identificable            |                 21 |              — |                 — |                   21 |
+| **Universo pertinente (1847–1871)** |           **2468** |       **2087** |           **381** |                    — |
+
+Volumen tecnico del corpus descargado:
+| Indicador                |       Valor |
+| ------------------------ | ----------: |
+| URLs procesadas          |          89 |
+| PDFs descargados         |        2087 |
+| PDFs faltantes           |         832 |
+| PDFs sin metadata        |           0 |
+| Volumen total descargado | **6.34 GB** |
+
+El proyecto identificó inicialmente 2.919 números de prensa histórica.
+De estos, 451 fueron excluidos por criterios metodológicos explícitos: estar fuera del rango temporal.
+El universo relevante quedó entonces en 2.468 números, de los cuales se descargaron correctamente 2.087, lo que corresponde a una tasa de adquisición del 84,6 %.
+Los restantes presentan errores técnicos diagnosticados y documentados, varios de los cuales requieren intervención manual.
+
+¿por qué no está todo descargado?
+Porque el proyecto priorizó trazabilidad y control metodológico sobre completitud acrítica.
+
+
+
+2.Proceso de OCR usando la utilidad/aplicación OCRmyPDF. Se realiza masivamente por cada uno de los números de los diferentes periodicos descargados en el paso 1. Las especificaciones a tener en cuenta a la hora de realizar el OCR fueron las siguientes [COMPLEMENTAR]
+2.2. Arquitectura de carpetas resultado: 
+data_final/
+├── Periodico_A/
+│   ├── Numero_001/
+│   │   └── input/
+│   │       ├── archivo.pdf
+│   │       └── ocr.txt
+│   ├── Numero_002/
+│   │   └── input/
+|   |       ├── archivo.pdf 
+│   │       └── ocr.txt
+│   └── ...
+├── Periodico_B/
+│   └── ...
+
+3. INDEXACIÓN: Proceso de búsqueda comparativa que apunta a facilitar el proceso de delimitación informativa a partir de claves de búsqueda. Este proceso es mucho más exhaustivo que el que se genera dentro de las búsquedas avanzadas de los repositorios instucionales, pues su objetivo se basa en señalar directamente dónde mirar dentro del corpus, por qué mirar ahí y afina las particularidades de la búsqueda histórica a partir de palabras clave y combinaciones lógicas útiles dentro de los requerimientos de la investigación. De esta manera, el proceso de indexación apunta no solo a encontrar rápidamente dónde aparece algo, también a contar cuántas veces aparece y relacionar dichas apariciones con metadatos (como el año y el nombre del periódico, por ejemplo).
+
+Esta indexación se nutre de las utilidades que brinda SQLite: un motor de base de datos relaciones embebido. Esto quiere decir: Un sistema de consulta que usa SQL estándar que lee directamente un archivo de extensión .db, es decir, UN INDICE OPERATIVO. (entendido como una cristalización material del proceso OCR del paso no. 2 y de la metadata extraida del repositorio del Banrep, que sirve como sustancia principal que da vida a todo el proyecto).En este caso, el archivo documents.db, basado en una arquitectura index-only FTS, caracterizada por: primero, diferenciar los archivos .txt OCR, los cuales viven en el filesystem que aparece en 2.2. Con esto, el SQLite guarda metadata, paths y un indice FTS, no el texto OCR como tal.  documents.db se generó a partir del proceso de Ingest (fruto del script Ingest_to_sqlite.py) [COMPLEMENTAR PARA EXPLICAR FUNCIONAMIENTO DEL SCRIPT] que crea una base de datos con dos elementos distinguibles (base de datos alojada en la siguiente ruta: /home/juan_romero/projects/ocr_project/db/): 
+	1. Una tabla denominada docs, con la información bibliográfica y material extraida de los metadatos de los periodicos y números descargados, OCRIzados e indexados; esta funciona como una tabla relaciona clásica o como la "ficha catalográfica del número del periódico". Esta contiene identificador, periódico, número, año y rutas a PDF y texto.
+	2. Una tabla virtual llamada docs_fts. Se entiende por FTS (o FTS5) como las siglas de FUll-Text Search. Esto quiere decir que el programa de SQLite tokeniza el texto, crea un índice invertido y permite el proceso de busqueda de palabras sin escanear todo el texto cada vez. Se debe tener en cuenta lo siguiente: en esta tabla no se guarda el texto (archivo de extensión .txt de 2.2.) como texto legible, en su lugar, se guardan tokens optimizados para búsqueda, referencias internas y estructuras optimizadas. ES UN ÍNDICE, NO UN REPOSITORIO TEXTUAL.
+	
+	Se podría decir que este archivo documents.db es el puente entre esa masa textual inabarcable que se generó luego del proceso de descarga y una lectura histórica dirigida.
+En últimas, este proceso búsca formular queries avanzadas, exportar resultados estructurados, detectar patrones de aparición y reducir los universos de lectura; siendo SQLite el motor de la reducción abocada a generar un índice reproducible, transparente y portátil para así pasar de un corpus histórico masivo a uno orientable a la lectura humana.
+
+3.1.PALABRAS CLAVE:
+Indexación: creación de estructuras para búsqueda rápida.
+
+FTS (Full-Text Search): búsqueda por contenido textual.
+
+Tokenización: separación del texto en palabras buscables.
+
+Índice invertido: Pasar/utilizar una palabra para así apuntar al documento donde puede aparecer.
+
+Unidad documental: En este proyecto corresponde a el número del periódico.
+
+Query: pregunta formal a la base de datos.
+
+Hit: coincidencia de una palabra con un documento.
+
+Co-ocurrencia: dos términos en el mismo documento.
+
+Subcorpus: subconjunto seleccionado por criterios (no arbitrario). En este caso, este término haria referencia al conjunto de unidades documentales que presentan mayor densidad de ocurrencias del término consultado. Para ello se toma en cuenta el número de veces que aparece el término clave dentro del periodico, recogiendo los 20 primeros en los que más aparezca.
+
+Densidad léxica: frecuencia relativa de términos.
+
+Exploración asistida: búsqueda guiada, no interpretación automática.
+
+Densidad documental normalizada: Métrica relativa que especifica qué tan significativa es la aparición de la clave de búsqueda o de la palabra consulta en relación con el tamaño del documento
+
+3.2Proceso de indexación: A partir de una lista de KEYWORDS, el proceso genera (en la carpeta /home/juan_romero/projects/ocr_project/exports/):
+3.2.1. SQLite para obetener lista de documentos donde aparece la keyword. Se señala y especifica, como columnas del archivo keywords_hits_exact.csv el año de publicación del periódico, su nombre y el número específico donde aparece.
+3.2.2. Para cada documento .txt listado en el paso anterior: Se abre el .txt OCR al que apunta y se cuentan las ocurrencias exactas (uso de python limpio). En este proceso se genera, dentro de keywords_hits_exact.csv, las siguientes métricas:
+	3.2.2.1. Hits_exact: intensidad discursiva absoluta del término de búsqueda. Cuenta la cantidad de veces que aparece el concepto clave dentro del documento generado luego del OCR. Para realizar este proceso, el pipeline se vale depython para realizar el conteo exacto de palabra por documento. En este caso, esta métrica podría indicarnos la marginalidad o la centralidad temática de un concepto.
+	3.2.2.2. text_length: Se mide la cantidad total de texto reconocido. Si los textos son muy cortos, puede tratarse a un proceso de OCR fallido, páginas incompletas o aparición de múltiples imágenes en el archivo OCR. Por otro lado, un número razonable implcaría texto real utilizable.
+	3.2.2.3. density: mide la densidad normalizada del texto. density= hits_exact/text_length. Mide la relevancia relativa y busca evitar que textos larguísimos dominen solo por tamaño.
+3.2.3. Se genera un archivo .csv donde se especifica la aparición más temprana de la clave de búsqueda dentro del cumulo de periodicos indexados. El archivo se llama keyword_first_hits.csv
+3.2.4. A partir de la intensidad discursiva absoluta del término de búsqueda (valor de hits_exact), se genera un subcorpus en donde se agrupan las 20 unidades documentales donde hits_exact > 1. Es decir, se genera el subcorpus con los documentos donde más aparezca el término de búsqueda. Esto se genera en un archivo llamado keyword_subcorpus_top.csv.	 
+3.2.5. Indicadores de confiabilidad: Buscan saber qué tan confiable es usar el documento al que apunta la búsqueda para análisis histórico. la confibailidad se mide como un elemento gradual y contextual, basado en indicadores y métricas específicas. Estas son:
+	3.2.5.1. Se retoma del proceso de contado: hits_exact, text_length y density.
+	3.2.5.2. noise_ratio (Indicador de ruido OCR): Calcula la proporción de caracteres "raros" que suelen indicar un proceso malo de OCR. noise_ratio=caracteres_no_alfabéticos /longitud total.
+Se genera un indicador compuesto de confiabilidad: se establece como una heurística explíctia:
+confidence_score = (
+    w1 * normalized_length +
+    w2 * normalized_hits +
+    w3 * (1 - noise_ratio)
+)
+Este no se establece como criterio de exclsuión: es un indicador de tratamiento que busca especifica qué tipo de intervención necesita el documento analizado (candidatos a reprocesamiento OCR y lectura asistida). Genera unas flags de salida (ocr_attention_flag) que indican el mejor camino que tomarpara el proceso de intevención: 
+confidence ≥ 0.66  → HIGH
+0.40 – 0.65        → MEDIUM
+< 0.40             → LOW
+
+3.2.6. Agregar complementos compatibles a confidence_score, los cuales buscan generar el proceso de refinado de la busqueda a partir de evidencia lexica > score técnico:
+3.2.6.1.lexical_role: separa la aparición de centralidad discursiva para refinar la lectura, no la borra. Así:
+hits_exact == 1              → "MENTION"
+hits_exact 2–4               → "SECONDARY"
+hits_exact ≥ 5               → "CENTRAL"
+Con ello, se pueden seguir las siguientes rutas de intervención según los resultados:
+LOW + CENTRAL → candidato fuerte a re-OCR
+LOW + MENTION → referencia contextual (no núcleo).
+3.2.6.1.ocr_action. define las rutas de intervención. Sigue la siguiente lógica: 
+| Condición      | ocr_action             |
+| -------------- | ---------------------- |
+| hits_exact ≥ 2 | **REPROCESS_PRIORITY** |
+| hits_exact = 1 | KEEP_AS_CONTEXT        |
+| hits_exact = 0 | OK                     |
+3.2.6. timeline_temática: ESpecifica, por cada palabra de keyword: cuándo aparece, con qué intensidad, con qué rol discursivo, cómo cambia eso en el tiempo. A partir de las siguientes métricas, calculadas cada año. COn esto, se busca responder empíricamente cuándo emerge el término, cuándo se estabiliza, cúando empieza a estructurar discurso y en qué momentos el OCr limíta la lectura. Produce keyword_timeline.csv:
+
+docs_with_term: número de documentos donde aparece
+total_hits: apariciones totales del término
+avg_hits_per_doc
+central_docs: documentos con lexical_role = CENTRAL
+secondary_docs
+mention_docs
+reprocess_priority_docs
+
+En keyword_timeline.csv aparece: 
+3.2.6.1. aparición inicial, medida por el primer año donde docs_with_term > 0, es decir, el ingreso del término al espacio público impreso.
+3.2.6.2. intensificación: donde se especifica el aumento sostenido de: docs_with_term, total_hits, avg_hits_per_doc, no como una mención aislada. 
+3.2.6.3. Cambio cualitativa: en la aparición de: secondary_docs. luego central_docs
+3.2.6.4. Señal de ocrpus critico: reprocess_priority_docs es alto en ciertos años.
+3.2.7. Detección de episodios discursivos: Definidiso como Momentos históricos en los que una o varias constelaciones aparecen de forma recurrente, configurando un tipo de discurso. Para cada documento con hits_exact ≥ 1:
+3.2.7.1.Tomar una ventana léxica alrededor de estudiante (por ejemplo ±20 palabras)
+3.2.7.2. Extraer:
+*Sustantivos
+*Adjetivos
+*verbos cercanos
+3.2.7.3.Contar coocurrencias por:
+*Año
+*Tramo temporal (ej. 1854–56, 1857–61, etc.)
+3.2.7.4.Identificar núcleos léxicos recurrentes
+Así, se busca extraer constelaciones semánticas (es decir, conjuntos de palabras que tienden a aparecer junstas alrededor de un termino, sin interpretrar qué significan) y resumirlas luego por tramo temporal. Para ello, por cada año: se localiza la palabra clave en los textos, se extrae una ventana léxica, se cuentan las palabras que aparecen cerca y se produce un CSV interpretable en excel para así, luego, decidir cómo se agrupa esto por tramos temporales. La extracción léxica esta basada en el criterio conceptual dado desde la perspectiva que construye Reinhart Koselleck de concepto en futuro Pasado. Esto se puede realizar generando candidatos a conceptos a partir de un proceso sistemático y replicable que busca distinguir palabras con potencial conceptual de palabras que no lo tienen usando recuros existentes. Esto se realiza a través de spaCy.
+Este programa permite filtrar por categoría gramatical, trabajar con lemas, usar stopwords linguisticas estandar y reducir el ruido sin decidir a mano qué puede llegar a ser o no un concepto. Genera una estructura lingüistica del texto. 
+Proceso: Para cada documento donde aparece la keyword (ej. estudiante):
+-Carga el ocr.txt
+-Busca ventanas léxicas alrededor de la keyword
+-Pasa esas ventanas por spaCy
+
+De cada ventana extrae solo:
+sustantivos (NOUN)
+adjetivos (ADJ)
+Convierte cada token a su lema
+Elimina:
+-stopwords de spaCy
+-tokens muy cortos
+-la keyword misma
+Cuenta frecuencias por año
+Exporta constelaciones semánticas depuradas
+Genera como resultado:
+Palabras con potencial conceptual, no conectores, no verbos, no ruido trivial. un arhcivo .csv (constelaciones_spacy_por_ano.csv). no decide qué es un concepto koselleckiano pero garantiza que lo que aparece ya no es ruido linguistico.
+Lo que se busca generar es: un espacio semántico depurado lingüísticamente,
+pero aún no conceptualmente interpretado.
+3.2.7.5. A partir del scripts episodios_discursivos.py, se especifican los tramos temporales donde un conjunto de conceptos aparece de forma recurrente, interrelacionada y estable, organizando el discurso alrededor de un problema histórico. De esta manera, el script lo que hace es, por cada concepto, contar en cuantos años aparece y con cuántos otros conceptos coaparece. De esta manera, se clasifican los conceptos por rol discursivo y no por su significado. Con este proceso se busca afirmar lo siguiente: "En un tramo temporal específico, ciertos términos tienden a aparecer juntos de forma no aleatoria". (Hecho dependiente de las características mismas del corpus, no una interpretación histórica). Se opera en el nivel de ocurrencia estructurada.
+Los roles discursivos que se establecen son los siguientes:
+a. Núcleo: palabras que aparecen en varios años y coaparecen con muchos otros conceptos. Estructura el discurso alrededor de la palabra clave.
+b. Soporte: aparece en algunos años y conecta con el núcleo. Sostiene el episodio discursivo.
+c. Contexto: aparece de forma puntual y no genera red. Conforma el entorno narrativo.
+El archivo de salida se llama episodios_discursivos.csv, en donde se distingue la siguiente información:
+| columna                | qué mide realmente                         |
+| ---------------------- | ------------------------------------------ |
+| `concept`              | candidato léxico lematizado                |
+| `years_present`        | **persistencia temporal**                  |
+| `cooccurring_concepts` | **densidad relacional**                    |
+| `discursive_role`      | rol estructural (CORE / SUPPORT / CONTEXT) |
+| 'year'                 | años en donde los conceptos aparecen       |
+3.2.8. Clustering conceptual ligero:En este punto no se busca desarrollar procesos de automatización asistida en el que se realice, por ejemplo: semántica profunda, embeddings (representaciones numéricas (vectores) de datos complejos como palabras, frases, imágenes o sonidos, que capturan su significado y relaciones semánticas, permitiendo a la IA entenderlos matemáticamente), procesado de topi modeling o interpretación histórica automática. Se trata de un proceso ligero, estructural y controlable que funcione como andamiaje empírico que permite una posterior lectura histórica. De esta manera, se busca generar "constelaciones semánticas", entendidas como un conjunto reducido de conceptos que:
+a. Coocuren con el keyword
+b. Aparecen de forma recurrente
+c. Se organizan jerárquicamente a tráves de los roles estructurales.
+d. Están acotados temporalmente.
+Basandose en la información presente en episodios_discursivos.csv, se realiza el proceso de clusterización a partir de tres dimensiones o reglas de juego:
+3.2.8.1. Temporal: Se agrupa por ventana movil de años o por tramos ya detectados en timeline_temática.py
+
+3.2.8.2. Rol discursivo: reconociendo que no todos los conceptos pesan igual, se establece la regla básica basada en los roles estructurales definidos en 3.2.7.
+3.2.8.3. Coocurrencia estructural: Aquí se usa cuántas veces un concepto aparece junto a otros, no solo con estudiante sino entre sí. Así, se busca detectar núcleos densos y satélites conceptuales.
+Las métricas que se utilizan son las siguientes:
+-frecuencia acumulada.
+-número de coocurrencias.
+-persistencia temporal.
+-densidad relativa.
+
+Para cada ventana:
+a.Se filtran conceptos cuyos years_list intersectan la ventana
+b.Se agrupan por discursive_role
+
+Para así calcular:
+a.frecuencia implícita (years_present)
+b.densidad relacional (cooccurring_concepts)
+
+Y así clasificar conceptos dentro de la constelación:
+CORE: centrales y persistentes
+SUPPORT: articuladores
+CONTEXT: entorno discursivo
+
+
+Este paso genera dos archivos: 
+1.constelaciones_semánticas.csv. con los siguientes datos:
+| cluster_id | time_window | core_concepts | support_concepts | size |
+| ---------- | ----------- | ------------- | ---------------- | ---- |
+2.constelaciones_resumen.txt 
+3.2.9. Se generan los snippets. A partir de los clusters conceptuales (Core/Support), se genera un proceso de snippets inteligente. En este caso, es valioso para el proceso de indexación si y solo si contiene la palabra clave de la búsqueda y palabras del clúster del periodo temporal. Se usa un script que tome la información de constelaciones_semánticas.csv en donde: 
+3.2.9.1.Cargar los Clusters: Leer qué palabras son CORE y SUPPORT para cada ventana de tiempo (o año).
+
+3.2.9.2. Leer los Documentos Relevantes: Ir solo a los documentos donde hits_exact >= 1.
+
+3.2.9.3. Extracción de Ventana: Extraer el texto alrededor de "estudiante" (ej. ±300 caracteres o ±40 palabras).
+
+3.2.9.4. Scoring Semántico (La clave):
+
+    -Si el snippet tiene palabras del grupo CORE: +10 puntos.
+
+    -Si tiene palabras del grupo SUPPORT: +5 puntos.
+
+    -Si solo tiene "estudiante": 1 punto.
+
+3.2.9.5. Selección: Quedarse con los "Top 3 Snippets" con mayor puntaje por documento. Estos son tus candidatos a "Citas Clave" para el Excel.
+3.3. Re-OCRificar un subcorpus altamente selectivo para: capturar títulos completos, identificar autoría, extraer paginación real, permitir transcripción fiel (títulos y citas).
+Criterios prácticos:
+Inputs:
+
+📂 Núcleo de detección
+
+keyword_hits_exact.csv
+
+keyword_timeline.csv
+
+keyword_first_hits.csv
+
+📂 Priorización y corpus de trabajo
+
+keyword_subcorpus_top.csv
+
+snippets_top.csv
+
+📂 Análisis discursivo
+
+constelaciones_semanticas.csv
+
+constelaciones_spacy_por_ano.csv
+
+constelaciones_resumen.txt
+
+episodios_discursivos.csv
+Flujo operativo REAL de FASE 3
+🔹 3.1 Selección del subcorpus historiográfico
+
+Input principal:
+
+keyword_subcorpus_top.csv
+
+
+Qué haces aquí (decisión historiográfica):
+
+seleccionas:
+
+N artículos por keyword
+
+o N por período (ej. 1847–1855 / 1856–1865 / 1866–1871)
+
+criterio explícito:
+
+densidad semántica
+
+recurrencia
+
+valor contextual (periódico clave)
+
+📌 Este paso es humano y declarable
+(no automático, y eso es bueno).
+
+🔹 3.2 Trabajo directo con el OCR base (OCRmyPDF)
+
+❌ NO OCR4all
+❌ NO reOCR
+
+✔️ Usas directamente:
+
+los PDFs OCRmyPDF
+
+y/o sus .txt asociados
+
+Objetivo:
+
+identificar manualmente:
+
+inicio de artículo
+
+título
+
+firma (si existe)
+
+pasajes relevantes
+
+📌 Metodológicamente:
+
+“Se trabajó sobre OCR baseline estable, validado empíricamente.”
+
+🔹 3.3 Extracción asistida para Excel (NUEVO FOCO)
+
+Aquí ajustamos tu antiguo extract_excel_fields.py, pero conceptualmente, no como OCR.
+
+📥 Entradas reales
+
+keyword_subcorpus_top.csv
+
+snippets_top.csv
+
+keyword_hits_exact.csv
+
+constelaciones_semanticas.csv
+
+OCR base (PDF/TXT)
+
+📤 Salida
+excel_pre_fill.csv
+
+
+⚠️ Este archivo NO es la tabla final, es un andamiaje.
+
+4️⃣ Cómo se llena CADA CAMPO del Excel (ajustado a la realidad)
+
+Voy campo por campo, fuente real + automatización real.
+
+📌 TÍTULO DE LA PUBLICACIÓN SERIADA
+
+Fuente:
+
+metadata de hemeroteca
+
+nombre normalizado del PDF
+
+Automatización: ✔️ alta (lookup)
+Validación humana: ✔️ obligatoria
+
+📌 Ciudad de publicación / Editor
+
+Fuente:
+
+ficha catalográfica
+
+conocimiento historiográfico
+
+Automatización: ✔️ alta
+(no depende del OCR)
+
+📌 Año / Núm. / Fecha
+
+Fuente:
+
+metadata del PDF
+
+columnas year, numero
+
+Automatización: ✔️ alta
+Corrección humana: ⚠️ ocasional
+
+📌 Páginas relevantes
+
+Fuente:
+
+keyword_hits_exact.csv
+
+inspección visual en PDF
+
+Automatización: ⚠️ media
+(orienta, no decide)
+
+📌 TÍTULO DEL ARTÍCULO
+
+Fuente:
+
+OCR base (lectura directa del artículo)
+
+Automatización: ❌ no automática
+Extracción asistida: ✔️
+Corrección humana: ✔️ obligatoria
+
+📌 Esto es metodológicamente impecable.
+
+📌 AUTOR PRINCIPAL
+
+Fuente:
+
+firma en el texto
+
+iniciales
+
+atribuciones historiográficas
+
+Automatización: ❌ NO
+👉 Este campo es humano por definición
+
+📌 RESUMEN
+
+Fuente:
+
+snippets_top.csv
+
+lectura del artículo completo
+
+Automatización: ❌ NO
+Asistencia: ✔️ snippets como guía
+
+📌 Aquí blindas el trabajo:
+
+“El resumen no es generado automáticamente.”
+
+📌 CITAS CLAVE
+
+Fuente:
+
+keyword_hits_exact.csv
+
+texto OCR base
+
+Automatización: ✔️ sugerencia
+Transcripción: ✔️ humana
+
+📌 PALABRAS CLAVE (I–III)
+
+Fuente:
+
+keywords detonantes
+
+constelaciones_semanticas.csv
+
+clusters por año
+
+Automatización: ✔️ alta
+Ajuste humano: ✔️ recomendado
+
+📌 DESCRIPCIÓN DE LA PUBLICACIÓN
+
+Fuente:
+
+hemeroteca
+
+bibliografía secundaria
+
+Automatización: ✔️ casi total
+
+Diagrama de flujo para 3.3.
+[keyword_hits_exact.csv]
+[keyword_subcorpus_top.csv]
+[snippets_top.csv]
+[constelaciones_semanticas.csv]
+        ↓
+[selección historiográfica del subcorpus]
+        ↓
+[lectura OCRmyPDF (PDF/TXT)]
+        ↓
+[extract_excel_fields.py (asistido)]
+Un script de consolidación asistida que:
+-junta información dispersa del pipeline
+-pre-llena campos objetivos
+-deja marcadores claros donde el historiador interviene
+        ↓
+[excel_pre_fill.csv]
+        ↓
+[revisión historiográfica humana]
+        ↓
+[TABLA FINAL EXCEL]
+
+El sistema automatiza la localización, priorización y contextualización textual,
+pero no automatiza la interpretación histórica, la autoría ni la síntesis
+
+3.3.1. Proceso de organización de arquitectura de la reOCRificación: 
+Arquitectura base (archivo maestro de investigación y organización semántica):
+subcorpus_fase3/
+├── estudiante-juventud-colegio/
+│   ├── El_Constitucional_1853_Num_14/
+│   │   ├── input/
+│   │   │   ├── original.pdf
+│   │   │   └── metadata_minima.csv
+│   │   ├── raster/
+│   │   │   ├── page_001.tif
+│   │   │   ├── page_002.tif
+│   │   │   └── ...
+│
+├── estudiante/
+│   ├── El_NeoGranadino_1851_Num_22/
+│   │   ├── input/
+│   │   ├── raster/
+│
+├── juventud/
+│   └── ...
+Arquitectura para subcorpus_por_reOCR como el espacio operatvo de OCR4all con una organización téncia estricta:
+subcorpus_por_reOCR/
+├── estudiante-juventud-colegio/
+│   ├── El_Constitucional/
+│   │   ├── input/
+│   │   │   ├── image001.tif
+│   │   │   ├── image002.tif
+│   │   │   └── ...
+│   │   ├── output/
+│   │   └── metadata_minima.csv
+│
+├── estudiante/
+│   ├── El_NeoGranadino/
+│   │   ├── input/
+│   │   └── ...
+la metadata_minima se generará a posteriori al proceso de re-OCR con un script específico.
+La rasterización se genera a través del script rasterize_subcorpus_fase3.py. Las características que toma en cuenta son estas:
+1. Formato de salida: PNG vs TIFF (histórico + OCR4all) TIFF (LZW) estándar archivístico soporta 1bit/8bit/16bit compresión sin pérdida configurable OCR4all lo prefiere (evita re-raster interno) Kraken/Calamari trabaja bien (especialmente 8bit) robusto para batches grandes − más pesado que PNG (pero tolerable) − menos “visual debugging friendly” si 1bit PNG (8bit grayscale) ideal para debugging visual compacto buen soporte de histogram stretching − no es archivístico − OCR4all suele convertir otra vez (riesgo de doble degradación) − 1bit no es óptimo aquí Decisión recomendada (histórica + OCR-aware) → TIFF (8bit grayscale LZW) como salida final de producción → PNG (8bit grayscale) como artefacto de debugging opcional Justificación técnica-histórica En prensa decimonónica las familias tipográficas usan serif finas + interletraje variable + tinta irregular → el OCR se beneficia dramáticamente de conservar 8bit + grises + sin antialias. TIFF 8bit conserva info de textura y tinta útil para modelos line-based (Kraken/Calamari). 2. DPI + sharpen Lo que mientras vimos: 400 DPI fue mejor que 300 sharpening ayuda a despegar serif NO antialias fue una clave inesperada (contraintuitivo pero correcto para OCR) grayscale mejora histogram para binarización posterior Recomiendo: Baseline batch DPI = 400 grayscale = ON antialias = OFF sharpening = bajo NO binarización todavía Sharpen sugerido (pdftoppm → imagemagick) -unsharp 1.0x1.0+0.8+0 Esto pega serif y bordes sin halos. Experiment B (más agresivo) -unsharp 2.0x2.0+1.2+0 Después evaluamos si vale a pena subir DPI a 600 (pero probablemente no para prensa 1847–1871, porque el artefacto viene del PDF, no del escaneo). 3. Binarización histórica (muy importante) NO hagas binarización dentro del raster batch Razones: OCR4all tiene pipelines para Otsu + Sauvola + Wolf Kraken/Calamari prefieren 8bit grayscale upstream Para material del XIX la binarización óptima depende de la página (tinta, humedad, bleed-through, etc.) Mi propuesta: → Raster = 8bit grayscale (sin binarizar) → Binarización = downstream según task Más adelante podemos introducir un módulo "Historical Binarization" con variantes: Sauvola local window 25–40 Wolf Nick Bernsen y comparar por newspaper.
+
+El re_OCr se realiza mediante OCR4all, se buscará generarlo de manera masiva basandose en este principio: No se busca reinventar el OCR, sino demostrar si un OCR históricamente consciente supera empíricamente al OCR mecánico estándar.
+
+
+Tomar en cuenta este batch para copiar y pegar antes de iniciar a usar el script de OCR4all
+for kw in ~/projects/ocr_project/subcorpus_por_reOCR/*; do
+  echo "Procesando keyword: $(basename "$kw")"
+  rsync -av "$kw"/ ~/ocr4all/data/
+done
+
+
+DESARROLLO DE UN SISTEMA DE ASISTENCIA PARA LA CONSTRUCCIÓN DE UN CORPUS
+La herramienta de búsqueda e indexación desarrollada para este proyecto no pretende sustituir la lectura historiográfica tradicional, sino ampliar su alcance mediante un principio de exhaustividad documental mecanizada. A diferencia de la lectura selectiva de archivos masivos —inevitablemente condicionada por decisiones previas, fatiga y muestreo—, el pipeline procesa de forma íntegra y reproducible la totalidad del corpus que pudo descargarse a partir de la metadata encontrada y generada a partir de la información presentada en el repositorio de la hemeroteca digital del banrep: de un total de 89 periodicos o publiaciones diferentes, filtradas entre los años 1847 y 1871, se contó con un total de 2919 PDFs (que corresponden a números de periodico, capitulos o facsímiles). De este corpus general 430 se salian del rango temporal de 1847-1871, sumados a 21 con problemas a la hora de detectar la fecha (estos últimos no se descargaron de manera automática pero se triangularon para poder descargarse de manera manual). Sumado a estas exclusiones, hubo un volumen de 381 archivos que no se descargaron por errores técnicos, los cuales, de igual forma, se señalaron para poder descargarse manualmente.Esto nos deja con un corpus de 2087 PDFs. Esta herramienta, que luego de descargar automaticamente los archivos (con la posibilida de realizarlo por tandas), implementa OCRmyPdf para hacer procesamiento masivo de la información contenida dentro de los PDFs. Este procesamiento genera archivos de extensión .txt los cuales, junto a la metadata, se registra en una base de datos de tipo SQLite que permite registrar tanto presencias como ausencias léxicas a lo largo del tiempo. Así, por ejemplo, basado en las seis claves de búsqueda definidas (estudiante, estudiantil, joven, juventud, Colegio y Universidad), la clave “estudiante” arroja 144 coincidencias exactas en todo el corpus, un resultado que no debe interpretarse automáticamente como una deficiencia del OCR, sino como un dato histórico que puede reflejar tanto la inestabilidad semántica del período como la circulación restringida del término en la prensa decimonónica. Si bien el reconocimiento óptico de caracteres introduce errores sistemáticos —especialmente en páginas con layouts complejos como los periódicos—, estos no operan de forma aleatoria y pueden ser acotados mediante la comparación de variantes léxicas y constelaciones semánticas. En este sentido, la fiabilidad de la herramienta no reside en la captura exhaustiva de cada mención aislada, sino en su capacidad para ofrecer una base empírica amplia, verificable y comparativa sobre la cual el análisis histórico puede identificar tendencias, silencios y momentos de emergencia discursiva sin depender exclusivamente de la lectura fragmentaria o intuitiva del archivo.
+
+
+PENDIENTES FUTUROS:
+1. Implementar la v.5.8.3 para el proceso de OCR inicial
+2. diseñar e implementar indexadores con operadores lógicos.
+
+Proceso de ejemplo hasta 3.2.5.: KEYWORD = ["estudiante"].
+Información de keyword_first_hits.csv:
+keyword	-> estudiante
+first_year ->	1847
+periodico -> ElDuendeperiódicopolíticomoralliterariomercantilartísticoynoticioso	
+numero	-> ElDuendeperiódicopolíticomoralliterariomercantilartísticoynoticioso_1847_18118
+hits_exact -> 2
+			
+Total de periodicos donde hits_exact >=1: 134
+Total de periodicos con confidence LOW: 108
+¿Qué signnifica esto? 
+La palabra “estudiante” aparece en muchos documentos de forma débil, aislada o marginal. Es decir, con 1-2 apariciones mayormente, dentro de textos largos, muchos OCR ruidosos en donde no se especifica la densidad temática. Lo anterior puede establecerse como una hipótesis  históricamente coherente en la que “estudiante” aún no es un sujeto discursivo o un concepto central en gran parte del siglo XIX que aparece como referencia circunstancial y no como eje: indicaria la emergencia histórica del estudiante como sujeto político. Se sigue con lexical_role y ocr_action:
+Primero, en lexical_role aparecen los siguientes datos: 
+MENTION=113
+SECONDARY=20
+CENTRAL=3
+
+Por otro lado, en ocr_action aparecio esta información:
+REPROCESS_PRIORITY=23
+KEEP_AS_CONTEXT=113
+
+TIMELINE CON KEYWORDs
+
+year	docs_with_term	total_hits	avg_hits_per_doc	central_docs	secondary_docs	mention_docs	reprocess_priority_docs
+1847	2	3	1.5	0	1	1	1
+1848	3	3	1.0	0	0	3	0
+1849	2	2	1.0	0	0	2	0
+1850	1	1	1.0	0	0	1	0
+1851	2	2	1.0	0	0	2	0
+1853	4	4	1.0	0	0	4	0
+1854	1	1	1.0	0	0	1	0
+1855	3	11	3.67	1	0	2	1
+1856	11	12	1.09	0	1	10	1
+1857	5	5	1.0	0	0	5	0
+1858	12	22	1.83	1	2	9	3
+1859	19	25	1.32	0	5	14	5
+1860	12	14	1.17	0	2	10	2
+1861	2	3	1.5	0	1	1	1
+1864	8	12	1.5	0	2	6	2
+1865	8	12	1.5	0	2	6	2
+1866	12	13	1.08	0	1	11	1
+1867	9	10	1.11	0	1	8	1
+1868	7	12	1.71	1	1	5	2
+1869	7	8	1.14	0	1	6	1
+1871	6	6	1.0	0	0	6	0
+
+
+Desde 1849 docs_with_term > 0 (con 2). Es entre 1855 y 1861 donde hay un salto (Pasa docs_with_term de 3 en 1855 a 11 en 1866, baja a 5 en 1857 y vuelve a subir a 12 en 1858, sube a 19 el año siguiente, baja a 12 y en 1861 baja a 2). En 1864 y 65 se mantuvo en 8, luego, desde 1866 hasta el 71 se mueve en el intervalo x<= 12 && x>= 6. 
+
+En 1856 hay muchos documentos (11) pero su avg_hits_per_dpc = 1.09. Contrasta con 1855, que cuenta con 3 documentos pero con un promedio de repetición de 3.67. El resto de años el promedio de repeticiones es menor a 2, siendo de 1848-1854, 1857 y 1871 años con solo una repetición. Esto es crucial:
+En 1855 el término se concentra discursivamente
+En 1856 se dispersa y se vuelve más referencial
+Esto es exactamente la diferencia entre:
+evento discursivo (1855) y difusión administrativa / noticiosa (1856)
+
+PROCESP DE CLUSTERING LIGERO:
+1. Episodios discursivos
+El primer central aparece en 1855 pues central_docs = 1. 
+De 1858 a 1869 es un tramo de OCr ruidoso donde reprocess_priority_docs >= 1 && <= 5.
+ En episodios discrusivos se lograron ver los siguientes resultados:
+ a. CORE (emergencia estructural)
+hombre (3 años, 16)
+pobre  (3 años, 15)
+obra   (3 años, 43)
+tiempo (3 años, 51)
+
+En este caso, se trata de categorías sociales y temporales que articulan el término de búsqueda "estudiante".
+ b. SUPPORT (estables pero secundarios)
+Como:
+historia
+estudio
+esterno
+Ejes de articulación, pero no núcleos.
+ c.CONTEXT (eventos, escenas, ruido OCR, tópicos locales)
+En donde aparecen bloques coherentes como:
+-salud / viruela / vacunación
+-sociabilidad (tertulia, saludo, huéspeda…)
+-judicial (delito, juez, comisario)
+
+y también:
+-ruido OCR
+-hapax (En lexicografía o en crítica textual, voz registrada una sola vez en una lengua, en un autor o en un texto.)
+-nombres propios
+
+Se generó la constelación semántica (constelaciones_resume.txt) con estos resultados: 
+Constelación 1 (1847–1854)
+  CORE: hombre
+  SUPPORT: esterno
+  CONTEXT: afio; auténtico; biblioteca; ciencia; clase; contajiós; copia; digitalizado; enfermedad; familia; gobierno; interno; joven; militar; movimiento; natural; noción; partida; pensionado; peso; preparatorio; radcliffe; residente; soltero; subdito; vacunado; viruela
+
+Constelación 2 (1855–1855)
+  CORE: pobre
+  SUPPORT: 
+  CONTEXT: silvano
+
+Constelación 3 (1856–1856)
+  CORE: hombre; pobre
+  SUPPORT: 
+  CONTEXT: amigo; caso; cémico; delito; flor; particular; principio; rico
+
+Constelación 4 (1857–1857)
+  CORE: 
+  SUPPORT: 
+  CONTEXT: 
+
+Constelación 5 (1858–1858)
+  CORE: 
+  SUPPORT: estudio; historia
+  CONTEXT: acto; admitido; ajustado; ausencia; bien; carrera; cerea; comisario; costumbre; criado; efecto; gracia; huespeda; huéspeda; inventario; jenerales; juez; objeto; persona; preciso; premio; presentacion; presentandole; qued6; robo; saludo; sefior; seguido; soacha; tertulia; toso; vida; vino
+
+Constelación 6 (1859–1859)
+  CORE: obra; tiempo
+  SUPPORT: 
+  CONTEXT: 1831; alegre; amor; azufre; bar-; bello; caja; canleatro; casa; chacha; ciudad; combinacion; comerciante; derecho; derredor; doctor; fierro; grupo; italiano; merito; moda; mución; méno; nazareno; nombre; omnibus; oxtjeno; partimucho; pirita; poema; puerta; senorita
+
+Constelación 7 (1860–1860)
+  CORE: tiempo
+  SUPPORT: 
+  CONTEXT: adicion; brutal; cosa; cuenta; curiosidad; fuerte; fuerza; lecha; nifio; nuesmedio; pared; piiblico; rayas; sustracfo
+
+Constelación 8 (1861–1863)
+  CORE: 
+  SUPPORT: 
+  CONTEXT: 
+
+Constelación 9 (1864–1864)
+  CORE: hombre; obra
+  SUPPORT: esterno; historia
+  CONTEXT: documento; poesia; poeta
+
+Constelación 10 (1865–1865)
+  CORE: 
+  SUPPORT: 
+  CONTEXT: mano
+
+Constelación 11 (1866–1866)
+  CORE: 
+  SUPPORT: 
+  CONTEXT: 
+
+Constelación 12 (1867–1867)
+  CORE: 
+  SUPPORT: 
+  CONTEXT: 
+
+Constelación 13 (1868–1868)
+  CORE: 
+  SUPPORT: 
+  CONTEXT: causa; jeneración
+
+Constelación 14 (1869–1871)
+  CORE: obra; pobre; tiempo
+  SUPPORT: estudio
+  CONTEXT: novela; paso; plaza; yuestro
+A partir de estas constelaciones semánticas se generaron unos snippets específicos.
+
+Posibilidades de implementación futura:
+🔍 Principales OCR Open Source mencionados
+
+Estas son las herramientas de OCR de código abierto que se mencionan como “top” en esa revisión:
+
+✅ 1. Tesseract OCR
+
+El OCR open-source más popular y robusto.
+
+Muy bueno para texto impreso claro y con gran variedad de idiomas.
+
+Comunidad grande y extensible, con versiones actuales que mejoran OCR tradicional con redes neuronales.
+📌 Ideal como base o comparación de referencia.
+
+🧠 2. OCRopus
+
+Colección de herramientas que amplían Tesseract, enfocadas en análisis de páginas complejas.
+
+Incluye segmentación de layout y puede entrenarse para casos específicos.
+
+Más complejo de instalar y usar.
+📌 Útil si necesitas manejar layouts multi-columna o mezclados.
+
+📦 3. GOCR
+
+OCR básico y sencillo.
+
+Poca precisión en comparación con Tesseract o herramientas modernas.
+📌 Solo si tu pipeline necesita algo extremadamente ligero.
+
+📄 4. CuneiForm
+
+OCR con buen reconocimiento general y soporte de múltiples formatos.
+
+UI menos intuitiva, pero con resultados decentes.
+📌 Opción alternativa a Tesseract con diferente reconocimiento.
+
+⚡ 5. Ocrad
+
+Muy ligero y rápido.
+
+No está pensado para documentos complejos ni mala calidad.
+📌 Útil para casos muy sencillos.
+
+🐍 6. GImageReader
+
+Interfaz gráfica para OCR, soporta múltiples idiomas.
+
+Está más orientado a uso manual que a procesamiento automatizado en batch.
+📌 Puede servir para QA o pruebas rápidas en escritorio.
+
+🧠 7. Kraken
+
+OCR basado en redes recurrentes (CLSTM), con entrenamiento personalizable.
+
+Soporta segmentación de líneas y scripts diversos.
+
+Se ejecuta en Linux/Mac y tiene API Python.
+📌 Muy interesante si planeas entrenar modelos especializados.
+
+🤖 8. Calamari
+
+OCR profundo con redes neuronales (CNN + LSTM).
+
+Soporta entrenamiento con datos propios y reconocimiento de escritura.
+📌 Excelente para textos históricos o tipografías antiguas.
+
+🐉 9. PaddleOCR
+
+OCR moderno con deep learning, soporte para >80 idiomas y detección avanzada.
+
+Incluye capacidades de detección de tablas y layouts complejos.
+📌 Muy recomendable para documentos variados y de calidad irregular.
+
+🖥️ 10. A9T9
+
+OCR con GUI desarrollado por Microsoft.
+
+Más orientado a usuario final en Windows.
+📌 Menos útil para automatización y gran volumen.
+
+📌 Otras alternativas o tecnologías OCR modernas a considerar
+
+Además de los que menciona el artículo, hay herramientas y enfoques interesantes que también puedes explorar para tu pipeline:
+
+🧠 EasyOCR (no listado en ese artículo, pero popular)
+
+Basado en PyTorch, con soporte para muchos idiomas y escritura variada.
+
+Buena combinación de precisión y facilidad de uso.
+📌 Excelente candidato como alternativa a Tesseract o PaddleOCR.
+
+🚀 OCRmyPDF
+
+No es un motor OCR en sí, pero orquesta Tesseract u otros motores para agregar OCR a PDFs automáticamente, con soporte para procesamiento en lote, limpieza de imágenes y optimización.
+📌 Muy útil para tu pipeline nocturno de rasterización → OCR → indexación.
+
+🧠 Open-Source OCR Arena / Modelos VLM
+
+Plataformas donde puedes comparar modelos de OCR (incluyendo basados en visión-lenguaje grande).
+📌 Puede ayudarte a evaluar qué modelos funcionan mejor con tus tipos de documentos.
+
+✨ OCR basado en grandes modelos (Multimodal LMMs)
+
+Nuevas investigaciones (p.ej., TextMonkey) muestran que modelos multimodales pueden extraer texto y entender diseño sin OCR tradicional.
+📌 Puede valer la pena experimentar si el objetivo es también extracción semántica/estructura.
+
+🧠 ¿Cuál escoger según tu caso de uso?
+Caso de uso principal	Recomendación
+OCR rápido & barato en grandes volúmenes	Tesseract + OCRmyPDF
+OCR con layout complejo (tablas, columnas)	PaddleOCR / OCRopus
+OCR especializado o con entrenamiento propio	Kraken / Calamari
+Documentos históricos con tipografías antiguas	Calamari (entrenamiento dedicado)
+Integración Python + automatización	PaddleOCR / EasyOCR
+Exploración de nuevos modelos OCR	OCR Arena / Modelos VLM
+🧩 Integración en tu pipeline actual
+
+Dado que ya estás trabajando con un pipeline estable que incluye rasterización y evaluación:
+
+Primero prueba Tesseract + OCRmyPDF para definir línea base automatizada.
+
+Integra PaddleOCR/EasyOCR como segundo motor para mejorar casos donde Tesseract falla (mala calidad, tablas).
+
+Evalúa entrenar Calamari o Kraken con sample de tus documentos del siglo XIX (aprovechando tipografías históricas).
+
+Considera modelos OCR VLM más nuevos para textos con diseño impredecible o escritura mixta.
+

@@ -1,0 +1,7 @@
+¿Qué información debe haber en cada archivo?
+
+
+En CONTEXTO_PROYECTO.md:"Resumen del proyecto para dar contexto rápido al Agente" los períodos históricos prioritarios (la línea que dice [COMPLETAR]) y actualizar "Fase en curso" y "Problema de esta sesión" antes de cada chat.
+En DECISIONES.md:"Justifica el uso de cada herramienta"  la justificación historiográfica del recorte 1849–1909, la razón de los 30 archivos/año y las excepciones por año. Eso solo lo sabes tú.
+En SESION_LOG.md:"¿Qué se hizo en cada sesión de trabajo?" al terminar cada sesión de trabajo, agregar una entrada nueva con la plantilla. No tiene que ser largo — 5–10 líneas bastan.
+PIPELINE_ESTADO.md, "En qué fase estoy, qué funciona y qué no" se actualiza solo cuando cambias el estado de una tarea (de [ ] a [x]) o cuando aparece un nuevo problema

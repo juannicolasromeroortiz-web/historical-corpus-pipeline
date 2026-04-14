@@ -1,6 +1,6 @@
 {
-  "year_start": 1872,
-  "year_end": 1886,
-  "generated_at": "2026-03-10T23:03:27.110040",
-  "source": "scripts/download_arq/periodicos_unicos_segunda_fase.txt"
+  "year_start": 1887,
+  "year_end": 1909,
+  "generated_at": "2026-04-14T23:22:10.986815",
+  "source": "scripts/download_arq/periodicos_unicos_fase_3.txt"
 }

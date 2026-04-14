@@ -12,7 +12,7 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # CONFIG
 # =========================
 
-PERIODICOS_LIST_FILE = Path("scripts/download_arq/periodicos_unicos_segunda_fase.txt")
+PERIODICOS_LIST_FILE = Path("scripts/download_arq/periodicos_unicos_fase_3.txt")
 METADATA_DIR = Path("metadata")
 STATE_FILE = Path("logs/metadata_state.json")
 ERROR_LOG = Path("logs/metadata_errors.log")

@@ -7,7 +7,7 @@
   "titulo_numero": "Número 30 - Junio de 1883",
   "year": 1883,
   "download_url": "https://babel.banrepcultural.org/digital/api/collection/p17054coll26/id/10936/download",
-  "status": "downloaded_ok",
+  "status": "skipped_out_of_range",
   "pdf_filename": "ANALESDELAINSTRUCCIONPUBLICAENLOSESTADOSUNIDOSDECOLOMBIA_10936.pdf",
   "created_at": "2026-03-10T23:04:10.558209"
 }

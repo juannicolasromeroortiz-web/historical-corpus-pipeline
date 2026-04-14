@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 from datetime import datetime
 
-URLS_FILE = Path("scripts/download_arq/periodicos_unicos_segunda_fase.txt")
+URLS_FILE = Path("scripts/download_arq/periodicos_unicos_fase_3.txt")
 STATE_FILE = Path("logs/metadata_state.json")
 
 METADATA_SCRIPT = "scripts/download_arq/download_metadata_by_periodicos_v2.py"

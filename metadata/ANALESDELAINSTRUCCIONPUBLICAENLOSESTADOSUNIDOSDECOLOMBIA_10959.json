@@ -7,7 +7,7 @@
   "titulo_numero": "Número 53 - Diciembre de 1886",
   "year": 1886,
   "download_url": "https://babel.banrepcultural.org/digital/api/collection/p17054coll26/id/10959/download",
-  "status": "downloaded_ok",
+  "status": "skipped_out_of_range",
   "pdf_filename": "ANALESDELAINSTRUCCIONPUBLICAENLOSESTADOSUNIDOSDECOLOMBIA_10959.pdf",
   "created_at": "2026-03-10T23:04:10.564565"
 }

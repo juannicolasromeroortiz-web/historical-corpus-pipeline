@@ -7,7 +7,7 @@
   "titulo_numero": "Número 2 - Octubre 31 de 1880",
   "year": 1880,
   "download_url": "https://babel.banrepcultural.org/digital/api/collection/p17054coll26/id/10908/download",
-  "status": "downloaded_ok",
+  "status": "skipped_out_of_range",
   "pdf_filename": "ANALESDELAINSTRUCCIONPUBLICAENLOSESTADOSUNIDOSDECOLOMBIA_10908.pdf",
   "created_at": "2026-03-10T23:04:10.553966"
 }

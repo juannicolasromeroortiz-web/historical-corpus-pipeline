@@ -4,6 +4,8 @@ __pycache__/
 
 # Datos masivos (No subir a GitHub)
 data_final/
+data_normalized/
+metadata/
 db/*.db
 
 # Archivos exportados (Opcional, pero recomendado ignorar)
